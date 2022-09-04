@@ -1,11 +1,11 @@
 package com.handson.basic.model;
 
-import java.security.PublicKey;
-
 public class Addition extends Operator{
 
+    public Addition(){}
+    public Addition(int order){ this.order=order; }
     @Override
-    public Integer evaluate() {
+    public double evaluate() {
         return left.evaluate() + right.evaluate();
     }
 
@@ -17,10 +17,14 @@ public class Addition extends Operator{
         return res;
     }
 
-    // if is '+' return true
     @Override
     public boolean isSupported(String candidateOperator) {
         return candidateOperator.equals("+");
+    }
+
+    @Override
+    public int getOrder(){
+        return order;
     }
 
 }

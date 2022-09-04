@@ -16,17 +16,19 @@ public class CalculatorService {
         res.add(new Substraction());
         res.add(new Division());
         res.add(new Multiplication());
+        // add news operators
         return res;
     }
-
 
     public Expression parse(String exp) {
         String[] tokens = exp.split(" ");
         int pos = 0;
         return recursiveEval(tokens, pos);
+        // build object for the string expression.
     }
 
     private Expression recursiveEval(String[] tokens, int pos) {
+        // checks if empty input
         if (pos >= tokens.length) throw new RuntimeException("missing arguments");
         String curVal = tokens[pos].trim().toLowerCase();
         if (pos == tokens.length-1) {
@@ -45,15 +47,14 @@ public class CalculatorService {
         }
         if (isOperator(nextVal)) {
             operator = findOperator(nextVal);
-        }else {
+        } else {
             throw new RuntimeException("expecting an operator");
         }
         side2 = recursiveEval(tokens, pos +2);
         return operator.getOperator(side1, side2);
-
-
     }
 
+    // Check the last element of input to know if it's a number or not
     private Atom getAtomFromLastValue(String curVal) {
         if (isAtom(curVal)) {
             return new Atom(Integer.valueOf(curVal));
@@ -66,6 +67,8 @@ public class CalculatorService {
         return  (findOperator(nextVal) != null);
     }
 
+    // Check in the operators list if the opertor exists.
+    // it's easy to add new operator beacause of object oriented programming
     private Operator findOperator(String nextVal) {
         for (Operator op : operators) {
             if (op.isSupported(nextVal)) {
@@ -75,6 +78,7 @@ public class CalculatorService {
         return null;
     }
 
+    // Check if is number
     private boolean isAtom(String curVal) {
         try {
             Integer.valueOf(curVal);
