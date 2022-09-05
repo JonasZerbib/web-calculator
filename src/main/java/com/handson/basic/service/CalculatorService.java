@@ -34,7 +34,7 @@ public class CalculatorService {
     private void checkInput(String[] tokens, int pos, Stack<Object> stack, int validBrackets){
         if (pos >= tokens.length) throw new RuntimeException("missing arguments");
         String curVal = tokens[pos].trim().toLowerCase();
-        if(pos==0 && pos==tokens.length-1){
+        if(checkOpenBracketsAndNextAtomOrBrackets(checkCurrentOrder(pos, 0), checkCurrentOrder(pos, tokens.length - 1))){
             if(isAtom(curVal)){
                 stack.push(new Atom(Integer.parseInt(curVal)));
             } else if (curVal.equals("(")){
@@ -42,9 +42,9 @@ public class CalculatorService {
             } else {
                 throw new RuntimeException("expecting a number or brackets");
             }
-        } else if(pos == tokens.length - 1){
+        } else if(checkCurrentOrder(pos, tokens.length - 1)){
             checkEndExpression(stack, validBrackets, curVal);
-        } else if(pos == 0){
+        } else if(checkCurrentOrder(pos, 0)){
             checkStartExpression(tokens, pos, stack, validBrackets, curVal);
         } else {
             checkMiddleExpression(tokens, pos, stack, validBrackets, curVal);
@@ -52,7 +52,7 @@ public class CalculatorService {
     }
 
     private void checkMiddleExpression(String[] tokens, int pos, Stack<Object> stack, int validBrackets, String curVal) {
-        if ((Objects.equals(curVal, "(")) && ((isAtom(tokens[pos +1].trim().toLowerCase()) || Objects.equals(tokens[pos + 1], "(")))){
+        if (checkOpenBracketsAndNextAtomOrBrackets((Objects.equals(curVal, "(")), ((isAtom(tokens[pos + 1].trim().toLowerCase()) || Objects.equals(tokens[pos + 1], "("))))){
             validBrackets++;
             stack.push("(");
             checkInput(tokens, pos +1, stack, validBrackets);
@@ -60,10 +60,10 @@ public class CalculatorService {
             validBrackets--;
             evaluateSubExpression(stack);
             checkInput(tokens, pos +1, stack, validBrackets);
-        } else if (isAtom(curVal) && (Objects.equals(tokens[pos + 1], ")")) || isOperator(tokens[pos +1].trim().toLowerCase())){
+        } else if (checkOpenBracketsAndNextAtomOrBrackets(isAtom(curVal), (Objects.equals(tokens[pos + 1], ")"))) || isOperator(tokens[pos +1].trim().toLowerCase())){
             stack.push(new Atom(Integer.parseInt(curVal)));
             checkInput(tokens, pos +1, stack, validBrackets);
-        } else if (isOperator(curVal) && (Objects.equals(tokens[pos + 1], "(")) || isAtom(tokens[pos +1].trim().toLowerCase())){
+        } else if (checkOpenBracketsAndNextAtomOrBrackets(isOperator(curVal), (Objects.equals(tokens[pos + 1], "("))) || isAtom(tokens[pos +1].trim().toLowerCase())){
             stack.push(findOperator(curVal));
             checkInput(tokens, pos +1, stack, validBrackets);
         } else {
@@ -71,8 +71,12 @@ public class CalculatorService {
         }
     }
 
+    private boolean checkOpenBracketsAndNextAtomOrBrackets(boolean curVal, boolean tokens) {
+        return curVal && tokens;
+    }
+
     private void checkEndExpression(Stack<Object> stack, int validBrackets, String curVal) {
-        if (Objects.equals(curVal, ")") && validBrackets ==1){
+        if (checkOpenBracketsAndNextAtomOrBrackets(Objects.equals(curVal, ")"), checkCurrentOrder(validBrackets, 1))){
             evaluateSubExpression(stack);
         } else if (isAtom(curVal)) {
             stack.push(new Atom(Integer.parseInt(curVal)));
@@ -82,11 +86,11 @@ public class CalculatorService {
     }
 
     private void checkStartExpression(String[] tokens, int pos, Stack<Object> stack, int validBrackets, String curVal) {
-        if (Objects.equals(curVal, "(") && (isAtom(tokens[pos + 1]) || Objects.equals(tokens[pos + 1], "("))){
+        if (checkStartBracketsAndAtom(tokens, pos, curVal)){
             validBrackets++;
             stack.push("(");
             checkInput(tokens, pos +1, stack, validBrackets);
-        } else if (isAtom(curVal) && isOperator(tokens[pos +1])){
+        } else if (checkOpenBracketsAndNextAtomOrBrackets(isAtom(curVal), isOperator(tokens[pos + 1]))){
             stack.push(new Atom(Integer.parseInt(curVal)));
             checkInput(tokens, pos +1, stack, validBrackets);
         } else {
@@ -94,20 +98,29 @@ public class CalculatorService {
         }
     }
 
+    private boolean checkStartBracketsAndAtom(String[] tokens, int pos, String curVal) {
+        return checkOpenBracketsAndNextAtomOrBrackets(Objects.equals(curVal, "("), (isAtom(tokens[pos + 1]) || Objects.equals(tokens[pos + 1], "(")));
+    }
+
     private void evaluateSubExpression(Stack<Object> stack) {
+        List<Expression> currentBrackets = popAllOpenBrackets(stack);
+        stack.push(evalWithOperatorOrder(0, Lists.reverse(currentBrackets),currentBrackets.size()));
+    }
+
+    private List<Expression> popAllOpenBrackets(Stack<Object> stack) {
         List<Expression> currentBrackets = new ArrayList<>();
         int ind = stack.size()-1;
         while (stack.get(ind--) != "("){
             currentBrackets.add((Expression) stack.pop());
         }
         stack.pop();
-        stack.push(evalWithOperatorOrder(0, Lists.reverse(currentBrackets),currentBrackets.size()));
+        return currentBrackets;
     }
 
     // calculate expression without brackets
     private Expression evalWithOperatorOrder(int currentOrder, List<Expression> express, int len) {
         int operatorsOrders = getOperatorsMaxOrder();
-        if(currentOrder== operatorsOrders) {
+        if(checkCurrentOrder(currentOrder, operatorsOrders)) {
             Expression res= express.get(0);
             express.clear();
             return res;
@@ -119,7 +132,7 @@ public class CalculatorService {
                 express.set(ptr2++, current);
             } else {
                 Operator operator = (Operator) current;
-                if(operator.getOrder()==currentOrder){
+                if(checkCurrentOrder(operator.getOrder(), currentOrder)){
                     Expression side1= express.get(ptr2-1);
                     Expression side2= express.get(++ptr1);
                     Expression fillOperands = operator.getOperator(side1, side2);
@@ -130,6 +143,10 @@ public class CalculatorService {
             }
         }
         return evalWithOperatorOrder(currentOrder+1, express, ptr2);
+    }
+
+    private boolean checkCurrentOrder(int operator, int currentOrder) {
+        return operator == currentOrder;
     }
 
     private int getOperatorsMaxOrder() {
