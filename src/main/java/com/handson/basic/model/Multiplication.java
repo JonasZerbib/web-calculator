@@ -2,8 +2,12 @@ package com.handson.basic.model;
 
 public class Multiplication extends Operator{
 
+    public Multiplication(){}
+    public Multiplication(int order){
+        this.order=order;
+    }
     @Override
-    public Integer evaluate() {
+    public double evaluate() {
         return left.evaluate() * right.evaluate();
     }
 
@@ -20,4 +24,7 @@ public class Multiplication extends Operator{
         return candidateOperator.equals("*");
     }
 
+    public int getOrder(){
+        return order;
+    }
 }

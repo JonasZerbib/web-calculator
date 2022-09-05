@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.awt.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -27,9 +28,10 @@ public class CalculatorController {
     {
         try {
             Expression exp = calculatorService.parse(expression.getExpression());
-            Integer result =  exp.evaluate();
+            double result =  exp.evaluate();
+//            Color c = new Color(-16726016, true);
             return new ResponseEntity<>(result, HttpStatus.OK);
-        }catch (RuntimeException e){
+        } catch (RuntimeException e) {
             Map<String, String> response = new HashMap<>();
             response.put("error", e.getMessage());
             return new ResponseEntity<>(response, HttpStatus.OK);

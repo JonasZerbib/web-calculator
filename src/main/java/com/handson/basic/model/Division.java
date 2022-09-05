@@ -1,8 +1,13 @@
 package com.handson.basic.model;
 
 public class Division extends Operator{
+
+    public Division(){}
+    public Division(int order){
+        this.order=order;
+    }
     @Override
-    public Integer evaluate() {
+    public double evaluate() {
         return left.evaluate() / right.evaluate();
     }
     @Override
@@ -16,6 +21,10 @@ public class Division extends Operator{
     @Override
     public boolean isSupported(String candidateOperator) {
         return candidateOperator.equals("/");
+    }
+
+    public int getOrder(){
+        return order;
     }
 
 }

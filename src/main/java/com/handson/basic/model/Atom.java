@@ -1,13 +1,13 @@
 package com.handson.basic.model;
 
 public class Atom implements Expression {
-    Integer value;
+    double value;
 
-    public Atom(Integer value) {
+    public Atom(double value) {
         this.value = value;
     }
 
-    public Integer evaluate(){
+    public double evaluate(){
         return value;
     }
 }

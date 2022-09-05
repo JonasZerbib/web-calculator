@@ -1,18 +1,18 @@
 package com.handson.basic.model;
 
-public class Substraction extends Operator{
-
-    public Substraction() {}
-    public Substraction(int order){
+public class Power extends Operator{
+    public Power(){}
+    public Power(int order){
         this.order=order;
     }
     @Override
     public double evaluate() {
-        return left.evaluate() - right.evaluate();
+        return Math.pow(left.evaluate(), right.evaluate());
     }
+
     @Override
     public Expression getOperator(Expression left, Expression right) {
-        Substraction res = new Substraction();
+        Power res = new Power();
         res.left = left;
         res.right = right;
         return res;
@@ -20,9 +20,10 @@ public class Substraction extends Operator{
 
     @Override
     public boolean isSupported(String candidateOperator) {
-        return candidateOperator.equals("-");
+        return candidateOperator.equals("^");
     }
 
+    @Override
     public int getOrder(){
         return order;
     }
