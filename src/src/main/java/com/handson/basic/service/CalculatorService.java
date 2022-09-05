@@ -1,9 +1,11 @@
 package com.handson.basic.service;
 import com.google.common.collect.Lists;
 import com.handson.basic.model.*;
+import jdk.internal.org.objectweb.asm.tree.InnerClassNode;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class CalculatorService {
@@ -28,10 +30,9 @@ public class CalculatorService {
         while (!stack.isEmpty()){
             expression.add((Expression) stack.pop());
         }
-        return recursiveEval(0, Lists.reverse(expression), expression.size());
+        return evalWithOperatorOrder(0, Lists.reverse(expression), expression.size());
     }
 
-    // calculate expression with brackets
     private void checkInput(String[] tokens, int pos, Stack<Object> stack, int validBrackets){
         if (pos >= tokens.length) throw new RuntimeException("missing arguments");
         String curVal = tokens[pos].trim().toLowerCase();
@@ -44,61 +45,70 @@ public class CalculatorService {
                 throw new RuntimeException("expecting a number or brackets");
             }
         } else if(pos == tokens.length - 1){
-            if (Objects.equals(curVal, ")") && validBrackets==1){
-                List<Expression> currentBrackets = new ArrayList<>();
-                int ind = stack.size()-1;
-                while (stack.get(ind--) != "("){
-                    currentBrackets.add((Expression) stack.pop());
-                }
-                stack.pop();
-                stack.push(recursiveEval(0, Lists.reverse(currentBrackets),currentBrackets.size()));
-            } else if (isAtom(curVal)) {
-                stack.push(new Atom(Integer.parseInt(curVal)));
-            } else {
-                throw new RuntimeException("expecting a number or brackets at the end");
-            }
+            checkEndExpression(stack, validBrackets, curVal);
         } else if(pos == 0){
-            if (Objects.equals(curVal, "(") && (isAtom(tokens[pos + 1]) || Objects.equals(tokens[pos + 1], "("))){
-                validBrackets++;
-                stack.push("(");
-                checkInput(tokens, pos+1, stack, validBrackets);
-            } else if (isAtom(curVal) && isOperator(tokens[pos+1])){
-                stack.push(new Atom(Integer.parseInt(curVal)));
-                checkInput(tokens, pos+1, stack, validBrackets);
-            } else {
-                throw new RuntimeException("expecting a number or brackets at the beginning");
-            }
+            checkStartExpression(tokens, pos, stack, validBrackets, curVal);
         } else {
-            if ((Objects.equals(curVal, "(")) && ((isAtom(tokens[pos+1].trim().toLowerCase()) || Objects.equals(tokens[pos + 1], "(")))){
-                validBrackets++;
-                stack.push("(");
-                checkInput(tokens, pos+1, stack, validBrackets);
-            } else if ((Objects.equals(curVal, ")")) && validBrackets>0 && (isOperator(tokens[pos+1].trim().toLowerCase()) || Objects.equals(tokens[pos + 1], ")"))){
-                validBrackets--;
-                List<Expression> currentBrackets = new ArrayList<>();
-                int ind = stack.size()-1;
-                while (stack.get(ind--) != "("){
-                    currentBrackets.add((Expression) stack.pop());
-                }
-                stack.pop();
-                stack.push(recursiveEval(0, Lists.reverse(currentBrackets),currentBrackets.size()));
-                checkInput(tokens, pos+1, stack, validBrackets);
-            } else if (isAtom(curVal) && (Objects.equals(tokens[pos + 1], ")")) || isOperator(tokens[pos+1].trim().toLowerCase())){
-                stack.push(new Atom(Integer.parseInt(curVal)));
-                checkInput(tokens, pos+1, stack, validBrackets);
-            } else if (isOperator(curVal) && (Objects.equals(tokens[pos + 1], "(")) || isAtom(tokens[pos+1].trim().toLowerCase())){
-                stack.push(findOperator(curVal));
-                checkInput(tokens, pos+1, stack, validBrackets);
-            } else {
-                throw new RuntimeException("Wrong Input");
-            }
+            checkMiddleExpression(tokens, pos, stack, validBrackets, curVal);
         }
     }
 
-    // calculate expression without brackets
-    private Expression recursiveEval(int currentOrder, List<Expression> express, int len) {
+    private void checkMiddleExpression(String[] tokens, int pos, Stack<Object> stack, int validBrackets, String curVal) {
+        if ((Objects.equals(curVal, "(")) && ((isAtom(tokens[pos +1].trim().toLowerCase()) || Objects.equals(tokens[pos + 1], "(")))){
+            validBrackets++;
+            stack.push("(");
+            checkInput(tokens, pos +1, stack, validBrackets);
+        } else if ((Objects.equals(curVal, ")")) && validBrackets >0 && (isOperator(tokens[pos +1].trim().toLowerCase()) || Objects.equals(tokens[pos + 1], ")"))){
+            validBrackets--;
+            evaluateSubExpression(stack);
+            checkInput(tokens, pos +1, stack, validBrackets);
+        } else if (isAtom(curVal) && (Objects.equals(tokens[pos + 1], ")")) || isOperator(tokens[pos +1].trim().toLowerCase())){
+            stack.push(new Atom(Integer.parseInt(curVal)));
+            checkInput(tokens, pos +1, stack, validBrackets);
+        } else if (isOperator(curVal) && (Objects.equals(tokens[pos + 1], "(")) || isAtom(tokens[pos +1].trim().toLowerCase())){
+            stack.push(findOperator(curVal));
+            checkInput(tokens, pos +1, stack, validBrackets);
+        } else {
+            throw new RuntimeException("Wrong Input");
+        }
+    }
 
-        int operatorsOrders = 3;
+    private void checkEndExpression(Stack<Object> stack, int validBrackets, String curVal) {
+        if (Objects.equals(curVal, ")") && validBrackets ==1){
+            evaluateSubExpression(stack);
+        } else if (isAtom(curVal)) {
+            stack.push(new Atom(Integer.parseInt(curVal)));
+        } else {
+            throw new RuntimeException("expecting a number or brackets at the end");
+        }
+    }
+
+    private void checkStartExpression(String[] tokens, int pos, Stack<Object> stack, int validBrackets, String curVal) {
+        if (Objects.equals(curVal, "(") && (isAtom(tokens[pos + 1]) || Objects.equals(tokens[pos + 1], "("))){
+            validBrackets++;
+            stack.push("(");
+            checkInput(tokens, pos +1, stack, validBrackets);
+        } else if (isAtom(curVal) && isOperator(tokens[pos +1])){
+            stack.push(new Atom(Integer.parseInt(curVal)));
+            checkInput(tokens, pos +1, stack, validBrackets);
+        } else {
+            throw new RuntimeException("expecting a number or brackets at the beginning");
+        }
+    }
+
+    private void evaluateSubExpression(Stack<Object> stack) {
+        List<Expression> currentBrackets = new ArrayList<>();
+        int ind = stack.size()-1;
+        while (stack.get(ind--) != "("){
+            currentBrackets.add((Expression) stack.pop());
+        }
+        stack.pop();
+        stack.push(evalWithOperatorOrder(0, Lists.reverse(currentBrackets),currentBrackets.size()));
+    }
+
+    // calculate expression without brackets
+    private Expression evalWithOperatorOrder(int currentOrder, List<Expression> express, int len) {
+        int operatorsOrders = getOperatorsMaxOrder();
         if(currentOrder== operatorsOrders) {
             Expression res= express.get(0);
             express.clear();
@@ -121,7 +131,12 @@ public class CalculatorService {
                 }
             }
         }
-        return recursiveEval(currentOrder+1, express, ptr2);
+        return evalWithOperatorOrder(currentOrder+1, express, ptr2);
+    }
+
+    private int getOperatorsMaxOrder() {
+        Set<Integer> orders  =  getOperators().stream().map(x->x.getOrder()).collect(Collectors.toSet());
+        return orders.size();
     }
 
     private Atom getAtomFromLastValue(String curVal) {
