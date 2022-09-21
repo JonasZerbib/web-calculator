@@ -1,5 +1,4 @@
-# web-calculator
-<h1>EDA-Heart-Attack-Dataset</h1>
+<h1>Web-Calculator</h1>
 
 <h2>Description</h2>
 Application for making mathematical calculations.
